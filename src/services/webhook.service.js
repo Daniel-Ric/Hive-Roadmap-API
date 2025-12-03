@@ -1,4 +1,5 @@
 import {createHmac, randomUUID} from "node:crypto";
+import {isIP} from "node:net";
 import {env} from "../config/env.js";
 import {createHttp} from "../utils/http.js";
 import {badRequest, notFound} from "../utils/httpError.js";
@@ -19,6 +20,69 @@ function sanitizeWebhook(w) {
     };
 }
 
+function isPrivateIpv4(ip) {
+    const parts = ip.split(".").map(n => parseInt(n, 10));
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n) || n < 0 || n > 255)) {
+        return false;
+    }
+    if (parts[0] === 10) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    if (parts[0] === 127) return true;
+    return false;
+}
+
+function isPrivateIpv6(ip) {
+    const lower = ip.toLowerCase();
+    // loopback
+    if (lower === "::1") return true;
+    // unique local addresses fc00::/7 (fc00, fdxx)
+    if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
+    // link-local fe80::/10
+    if (lower.startsWith("fe80")) return true;
+    return false;
+}
+
+function isPrivateIp(ip) {
+    if (!ip) return false;
+    if (ip.includes(".")) {
+        return isPrivateIpv4(ip);
+    }
+    return isPrivateIpv6(ip);
+}
+
+function isLocalHostname(host) {
+    const lower = String(host || "").toLowerCase();
+    if (!lower) return false;
+    if (lower === "localhost") return true;
+    if (lower.endsWith(".localhost")) return true;
+    return false;
+}
+
+function validateWebhookUrl(url) {
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch {
+        throw badRequest("Invalid webhook URL");
+    }
+
+    const protocol = parsed.protocol;
+    if (protocol !== "http:" && protocol !== "https:") {
+        throw badRequest("Webhook URL must use http or https");
+    }
+
+    const hostname = parsed.hostname;
+    if (isLocalHostname(hostname)) {
+        throw badRequest("Webhook URL host not allowed");
+    }
+
+    const ipType = isIP(hostname);
+    if (ipType && isPrivateIp(hostname)) {
+        throw badRequest("Webhook URL IP not allowed");
+    }
+}
+
 export function listWebhooks() {
     return Array.from(store.values()).map(sanitizeWebhook);
 }
@@ -31,6 +95,8 @@ export function getWebhook(id) {
 
 export function createWebhook({url, events, secret, active = true}) {
     if (!url) throw badRequest("url is required");
+    validateWebhookUrl(url);
+
     const id = randomUUID();
     const w = {
         id,
