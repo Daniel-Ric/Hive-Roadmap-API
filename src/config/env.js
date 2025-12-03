@@ -22,7 +22,7 @@ const schema = Joi.object({
     TRUST_PROXY: Joi.alternatives().try(Joi.string(), Joi.number().integer()).default("loopback"),
     HIVE_BASE_URL: Joi.string().uri().default("https://updates.playhive.com"),
     HIVE_ORGANIZATION_SLUG: Joi.string().default("hivegameslimited"),
-    WEBHOOK_DEFAULT_SECRET: Joi.string().min(16).default("changeme-hive-roadmap-secret"),
+    WEBHOOK_DEFAULT_SECRET: Joi.string().min(16).optional(),
     WEBHOOK_HTTP_TIMEOUT_MS: Joi.number().default(5000)
 })
     .unknown(true);

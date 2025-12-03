@@ -1,4 +1,4 @@
-import {createHmac, randomUUID} from "node:crypto";
+import {createHmac, randomBytes, randomUUID} from "node:crypto";
 import {isIP} from "node:net";
 import {env} from "../config/env.js";
 import {createHttp} from "../utils/http.js";
@@ -97,12 +97,21 @@ export function createWebhook({url, events, secret, active = true}) {
     if (!url) throw badRequest("url is required");
     validateWebhookUrl(url);
 
+    let finalSecret;
+    if (typeof secret === "string" && secret.length >= 8) {
+        finalSecret = secret;
+    } else if (typeof env.WEBHOOK_DEFAULT_SECRET === "string" && env.WEBHOOK_DEFAULT_SECRET.length >= 16) {
+        finalSecret = env.WEBHOOK_DEFAULT_SECRET;
+    } else {
+        finalSecret = randomBytes(32).toString("hex");
+    }
+
     const id = randomUUID();
     const w = {
         id,
         url,
         events: Array.isArray(events) && events.length > 0 ? events.slice() : ["roadmap.status.snapshot"],
-        secret: secret && secret.length >= 8 ? secret : env.WEBHOOK_DEFAULT_SECRET,
+        secret: finalSecret,
         active: Boolean(active),
         createdAt: new Date().toISOString(),
         lastSuccessAt: null,
