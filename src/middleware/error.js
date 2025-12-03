@@ -32,11 +32,17 @@ export function errorHandler(err, req, res, next) {
 
     const body = {
         error: {
-            code, message: err.message || "Internal Server Error"
+            code,
+            message: err.message || "Internal Server Error"
         }
     };
 
-    if (env.NODE_ENV !== "production") {
+    const showDetails =
+        Boolean(env.ERROR_EXPOSE_DETAILS) ||
+        env.NODE_ENV === "development" ||
+        env.NODE_ENV === "test";
+
+    if (showDetails) {
         if (err.details) body.error.details = err.details;
         if (err.stack) body.error.stack = err.stack;
     }
