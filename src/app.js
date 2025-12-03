@@ -96,7 +96,12 @@ const globalLimiter = rateLimit({
     max: env.GLOBAL_RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
-    skip: req => mute.has(req.path) || req.path.startsWith("/api-docs")
+    skip: req => mute.has(req.path) || req.path.startsWith("/api-docs"),
+    message: {
+        error: {
+            code: "TOO_MANY_REQUESTS", message: "Too many requests"
+        }
+    }
 });
 
 app.use(globalLimiter);
