@@ -181,10 +181,7 @@ export async function getAggregateRoadmap({
     const meta = await getRoadmapMetadata();
     const statuses = includeCompleted ? meta.statuses : meta.statuses.filter(s => s.type !== "completed");
     const tasks = statuses.map(s => fetchAllSubmissionsForStatus({
-        statusId: s.id,
-        sortBy,
-        inReview,
-        includePinned
+        statusId: s.id, sortBy, inReview, includePinned
     }).then(pageData => ({
         status: s, pageData
     })));
